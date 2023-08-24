@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext"
+        ],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "isolatedModules": true
+    },
+    "include": [
+        "**/*.*",
+        ".eslintrc.cjs"
+    ],
+    "exclude": [
+        "node_modules"
+    ],
+    "ts-node": {
+        "swc": true,
+        "esm": true
+    }
+}

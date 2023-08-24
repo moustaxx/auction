@@ -1,0 +1,5 @@
+node_modules
+.cache
+db.json
+config.js
+logs.txt

@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Program",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**",
+                "**/node_modules/**"
+            ],
+            "type": "node",
+            "args": ["--loader=ts-node/esm", "src/main.ts"]
+        }
+    ]
+}
