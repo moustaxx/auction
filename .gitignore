@@ -1,5 +1,5 @@
-node_modules
-.cache
+node_modules/
+.cache/
+logs/
 db.json
 config.js
-logs.txt

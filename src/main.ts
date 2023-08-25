@@ -8,7 +8,7 @@ import { type Browser } from 'puppeteer';
 
 import config from '../config.js';
 import { store } from './store.js';
-import { clearLogFile, logMessage, sleep } from './utils.js';
+import { cleanUpLogsAndScreenshots, logMessage, sleep, getFileNameTimestamp } from './utils.js';
 import { type Offer } from './offer.js';
 import { OLXOffer } from './olx-offer.js';
 import { AllegroOffer } from './allegro-offer.js';
@@ -160,7 +160,7 @@ async function listen() {
 
 async function main() {
     try {
-        await clearLogFile();
+        cleanUpLogsAndScreenshots();
         logMessage('Starting...');
 
         await store.loadFromFile();

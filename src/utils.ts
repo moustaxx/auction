@@ -1,5 +1,4 @@
-import { writeFile } from 'node:fs/promises';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 
 import config from '../config.js';
 
@@ -22,6 +21,7 @@ export function getFileNameTimestamp() {
     );
 }
 
+const logFileTimestamp = getFileNameTimestamp();
 
 export function logMessage(message: string) {
     if (!config.logsEnabled) return;
@@ -30,7 +30,7 @@ export function logMessage(message: string) {
     const msg = `${timestamp}: ${message}`;
 
     console.log('>', msg);
-    appendFileSync(config.logsPath, msg + '\n');
+    appendFileSync(`${config.logsDirectory}/log-${logFileTimestamp}.txt`, msg + '\n');
 }
 
 export function logError(error: any) {
@@ -40,6 +40,22 @@ export function logError(error: any) {
     }
 }
 
-export async function clearLogFile() {
-    await writeFile(config.logsPath, '');
+export function cleanUpLogsAndScreenshots() {
+    const { logsToKeep, logsDirectory } = config;
+
+    const fileList = readdirSync(logsDirectory)
+        .map(name => ({ name, mtimeMs: statSync(`${logsDirectory}/${name}`).mtimeMs }))
+        .sort((file1, file2) => file2.mtimeMs - file1.mtimeMs);
+
+    const logFiles = fileList.filter(file => file.name.startsWith('log'));
+
+    for (let i = logsToKeep - 1; i < logFiles.length; i++) {
+        rmSync(`${logsDirectory}/${logFiles[i].name}`);
+    }
+
+    const screenshotFiles = fileList.filter(file => file.name.startsWith('error-ss'));
+
+    for (let i = logsToKeep; i < screenshotFiles.length; i++) {
+        rmSync(`${logsDirectory}/${screenshotFiles[i].name}`);
+    }
 }
