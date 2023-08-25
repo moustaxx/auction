@@ -3,6 +3,7 @@ import notifier from 'node-notifier';
 import open from 'open';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import PortalPlugin from 'puppeteer-extra-plugin-portal';
 import { type Browser } from 'puppeteer';
 
 import config from '../config.js';
@@ -13,6 +14,8 @@ import { OLXOffer } from './olx-offer.js';
 import { AllegroOffer } from './allegro-offer.js';
 
 puppeteer.use(StealthPlugin());
+puppeteer.use(PortalPlugin({ webPortalConfig: { listenOpts: { port: 3211 } } }));
+
 let browser: Browser;
 
 async function getPageDOM(url: string) {
@@ -83,11 +86,42 @@ async function resolveUrl(queryUrl: URL) {
         const page = await browser.newPage();
         await page.goto(queryUrl.toString());
 
-        await page.waitForSelector('.opbox-listing');
-        const html = await page.$eval('.opbox-listing', el => el.innerHTML);
+        await page.waitForSelector('.opbox-listing', { timeout: 10_000 })
+            .catch(async (error: Error) => {
+                logMessage(error.message);
+                const pageTitle = await page.$('title')
+                    .then(async x => x?.evaluate(el => el.textContent));
+
+                if (pageTitle === 'Captcha') {
+                    logMessage('Captcha need to be solved!');
+                    const portalUrl = await page.openPortal();
+                    logMessage('Portal URL: ' + portalUrl);
+
+                    notifier.notify({
+                        title: 'Captcha need to be solved!',
+                        message: 'Click to open in browser.'
+                    }, (error, response, metadata) => {
+                        if (metadata?.action === 'clicked') {
+                            logMessage('Opening portal...');
+                            void open(portalUrl);
+                        }
+                        if (error) logMessage('Notification: ' + String(error));
+                    });
+
+                    await page.waitForSelector('.opbox-listing', { timeout: 120_000 })
+                        .catch(() => { throw new Error('Captcha not solved!'); });
+                    await page.closePortal();
+                }
+                else {
+                    const path = `logs/error-ss-${getFileNameTimestamp()}.jpg`;
+                    await page.screenshot({ path, type: 'jpeg' });
+                    throw error;
+                }
+            });
+        const offersHtml = await page.$eval('.opbox-listing', el => el.innerHTML);
         await page.close();
 
-        const { window } = new JSDOM(html);
+        const { window } = new JSDOM(offersHtml);
         const offerElementArr = window.document.querySelectorAll('article');
         if (offerElementArr.length === 0) logMessage('No offers found!');
 
