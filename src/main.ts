@@ -51,6 +51,11 @@ function isOfferNew(offerId: number, offer: Offer) {
     return !offerFromStore || offerFromStore.price !== offer.price;
 }
 
+function parseOfferId(offerIdString: string) {
+    if (!offerIdString) throw new Error('Offer must have a distinctive id!');
+    return Number.parseInt(offerIdString);
+}
+
 async function handleParsedOffer(offer: Offer, offerId: number) {
     if (!isOfferNew(offerId, offer)) return;
 
@@ -68,11 +73,9 @@ async function resolveUrl(queryUrl: URL) {
         if (offerElementArr.length === 0) logMessage('No offers found!');
 
         for (const offerElement of offerElementArr) {
-            const offerIdString = offerElement.id;
-            if (!offerIdString) throw new Error('Offer must have a distinctive id!');
-
+            const offerId = parseOfferId(offerElement.id);
             const offer = OLXOffer.fromElement(queryUrl, offerElement);
-            await handleParsedOffer(offer, Number.parseInt(offerIdString));
+            await handleParsedOffer(offer, offerId);
         }
     }
     else if (queryUrl.hostname === 'allegro.pl') {
@@ -89,17 +92,11 @@ async function resolveUrl(queryUrl: URL) {
         if (offerElementArr.length === 0) logMessage('No offers found!');
 
         for (const offerElement of offerElementArr) {
-            const textContent = offerElement.textContent || '';
-            if (textContent.includes('Sponsorowane')) continue;
+            if (offerElement.textContent?.includes('Sponsorowane')) continue;
 
-            const offerIdString = offerElement.dataset.analyticsViewValue;
-            if (!offerIdString) {
-                console.log(offerElement.outerHTML);
-                throw new Error('Offer must have a distinctive id!');
-            }
-
+            const offerId = parseOfferId(offerElement.dataset.analyticsViewValue || '');
             const offer = AllegroOffer.fromElement(queryUrl, offerElement);
-            await handleParsedOffer(offer, Number.parseInt(offerIdString));
+            await handleParsedOffer(offer, offerId);
         }
     }
     else throw new Error(`Unhandled URL hostname: ${queryUrl.hostname}!`);
