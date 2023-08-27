@@ -14,7 +14,12 @@ import { OLXOffer } from './olx-offer.js';
 import { AllegroOffer } from './allegro-offer.js';
 
 puppeteer.use(StealthPlugin());
-puppeteer.use(PortalPlugin({ webPortalConfig: { listenOpts: { port: 3211 } } }));
+puppeteer.use(PortalPlugin({
+    webPortalConfig: {
+        listenOpts: { port: 3211 },
+        baseUrl: 'http://localhost:3211'
+    }
+}));
 
 let browser: Browser;
 
