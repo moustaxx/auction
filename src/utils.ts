@@ -16,7 +16,7 @@ function addMinusesAndZeros(...args: number[]) {
 export function getFileNameTimestamp() {
     const date = new Date();
     return addMinusesAndZeros(
-        date.getDay(), date.getMonth(), date.getFullYear(),
+        date.getDate(), date.getMonth() + 1, date.getFullYear(),
         date.getHours(), date.getMinutes(), date.getSeconds()
     );
 }
