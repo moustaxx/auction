@@ -23,13 +23,22 @@ puppeteer.use(PortalPlugin({
 
 let browser: Browser;
 
-async function getPageDOM(url: string) {
+async function getPageDOM(url: string, retryTries = 10) {
+    try {
     const html = await fetch(url, {
         signal: AbortSignal.timeout(5000),
         headers: new Headers({ 'User-Agent': config.userAgent })
     }).then(async r => await r.text());
-
     return new JSDOM(html);
+}
+    catch (error) {
+        if (error instanceof Error && error.message === 'fetch failed' && retryTries > 0) {
+            await sleep(5000);
+            logMessage('Network connection error. Retrying...');
+            return getPageDOM(url, retryTries - 1);
+        }
+        throw error;
+    }
 }
 
 function sendNotification(offer: Offer) {
@@ -67,7 +76,6 @@ function parseOfferId(offerIdString: string) {
 async function handleParsedOffer(offer: Offer, offerId: number) {
     if (!isOfferNew(offerId, offer)) return;
 
-    logMessage('Change detected!');
     logMessage(offer.toString());
     sendNotification(offer);
 
