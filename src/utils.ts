@@ -26,7 +26,7 @@ const logFileTimestamp = getFileNameTimestamp();
 export function logMessage(message: string) {
     if (!config.logsEnabled) return;
 
-    const timestamp = new Date().toISOString();
+    const timestamp = new Date().toLocaleString('sv');
     const msg = `${timestamp}: ${message}`;
 
     console.log('>', msg);
