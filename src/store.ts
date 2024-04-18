@@ -1,4 +1,5 @@
 import { writeFile, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 import config from '../config.js';
 import { type Offer, type OfferProps } from './offer.js';
@@ -10,6 +11,7 @@ class OfferStore extends Map<number, Offer> {
     }
 
     async loadFromFile() {
+        if (!existsSync(config.dbPath)) return;
         const str = await readFile(config.dbPath, { encoding: 'utf8' });
         if (!str) return;
 

@@ -1,4 +1,4 @@
-import { appendFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { appendFileSync, readdirSync, rmSync, statSync, existsSync, mkdirSync } from 'node:fs';
 
 import config from '../config.js';
 
@@ -30,6 +30,11 @@ export function logMessage(message: string) {
     const msg = `${timestamp}: ${message}`;
 
     console.log('>', msg);
+
+    if (!existsSync(config.logsDirectory)) {
+        mkdirSync(config.logsDirectory);
+    }
+
     appendFileSync(`${config.logsDirectory}/log-${logFileTimestamp}.txt`, msg + '\n');
 }
 
@@ -42,6 +47,8 @@ export function logError(error: any) {
 
 export function cleanUpLogsAndScreenshots() {
     const { logsToKeep, logsDirectory } = config;
+
+    if (!existsSync(logsDirectory)) return;
 
     const fileList = readdirSync(logsDirectory)
         .map(name => ({ name, mtimeMs: statSync(`${logsDirectory}/${name}`).mtimeMs }))
