@@ -127,7 +127,7 @@ async function resolveUrl(queryUrl: URL) {
                 const pageTitle = await page.$('title')
                     .then(async x => x?.evaluate(el => el.textContent));
 
-                if (pageTitle === 'Captcha') await handleCaptcha(page, offerListSelector);
+                if (pageTitle === 'allegro.pl') await handleCaptcha(page, offerListSelector);
                 else {
                     const path = `logs/error-ss-${getFileNameTimestamp()}.jpg`;
                     await page.screenshot({ path, type: 'jpeg' });
