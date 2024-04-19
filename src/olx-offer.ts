@@ -15,7 +15,7 @@ export class OLXOffer extends Offer {
     static fromElement(queryUrl: URL, el: Element) {
         const title = el.getElementsByTagName('h6')[0]?.textContent || 'Unknown title';
 
-        const priceText = el.querySelector('p[data-testid="ad-price"]')?.textContent || '';
+        const priceText = el.querySelector('p[data-testid="ad-price"]')?.textContent?.replace(' ', '') || '';
         let price = Number.parseFloat(priceText);
         if (Number.isNaN(price)) price = Number.parseFloat(priceText.match(/\d+ zł/)?.at(0) || '');
         if (Number.isNaN(price)) logMessage('Price is NaN!');
