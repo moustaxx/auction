@@ -21,16 +21,16 @@ puppeteer.use(PortalPlugin({
     }
 }));
 
-let browser: Browser;
+let browser: Browser | null = null;
 
 async function getPageDOM(url: string, retryTries = 10) {
     try {
-    const html = await fetch(url, {
-        signal: AbortSignal.timeout(5000),
-        headers: new Headers({ 'User-Agent': config.userAgent })
-    }).then(async r => await r.text());
-    return new JSDOM(html);
-}
+        const html = await fetch(url, {
+            signal: AbortSignal.timeout(5000),
+            headers: new Headers({ 'User-Agent': config.userAgent })
+        }).then(async r => await r.text());
+        return new JSDOM(html);
+    }
     catch (error) {
         if (error instanceof Error && error.message === 'fetch failed' && retryTries > 0) {
             await sleep(5000);
@@ -116,7 +116,7 @@ async function resolveUrl(queryUrl: URL) {
         }
     }
     else if (queryUrl.hostname === 'allegro.pl') {
-        if (browser === null) throw new Error('config.useBrowser must be true to resolve allegro.pl');
+        if (!browser) throw new Error('config.useBrowser must be true to resolve allegro.pl');
         const page = await browser.newPage();
         await page.goto(queryUrl.toString());
 
@@ -169,7 +169,7 @@ async function listen() {
         }
 
         logMessage('Searching finished');
-        if (config.useBrowser) await browser.close();
+        if (config.useBrowser) await browser?.close();
         await sleep(1000 * 60 * config.intervalMinutes);
     }
 }
@@ -193,7 +193,7 @@ async function main() {
     }
     finally {
         logMessage('Exit...');
-        if (config.useBrowser) await browser.close();
+        if (config.useBrowser) await browser?.close();
     }
 }
 
