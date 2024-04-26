@@ -126,6 +126,7 @@ async function resolveUrl(queryUrl: URL) {
     } else if (queryUrl.hostname === "allegro.pl") {
         if (!browser) throw new Error("config.useBrowser must be true to resolve allegro.pl");
         const page = await browser.newPage();
+        await page.setUserAgent(config.userAgent);
         await page.goto(queryUrl.toString());
 
         const offerListSelector = ".opbox-listing";
