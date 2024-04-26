@@ -1,5 +1,5 @@
-import { Offer } from './offer.js';
-import { logMessage } from './utils.js';
+import { Offer } from "./offer.js";
+import { logMessage } from "./utils.js";
 
 export class OLXOffer extends Offer {
     // static parseDate(dateStr: string) {
@@ -13,23 +13,23 @@ export class OLXOffer extends Offer {
     // }
 
     static fromElement(queryUrl: URL, el: Element) {
-        const title = el.getElementsByTagName('h6')[0]?.textContent || 'Unknown title';
+        const title = el.getElementsByTagName("h6")[0]?.textContent || "Unknown title";
 
-        const priceText = el.querySelector('p[data-testid="ad-price"]')?.textContent?.replace(' ', '') || '';
+        const priceText = el.querySelector('p[data-testid="ad-price"]')?.textContent?.replace(" ", "") || "";
         let price = Number.parseFloat(priceText);
-        if (Number.isNaN(price)) price = Number.parseFloat(priceText.match(/\d+ zł/)?.at(0) || '');
-        if (Number.isNaN(price)) logMessage('Price is NaN!');
+        if (Number.isNaN(price)) price = Number.parseFloat(priceText.match(/\d+ zł/)?.at(0) || "");
+        if (Number.isNaN(price)) logMessage("Price is NaN!");
 
-        const dateStr = el.querySelector('p[data-testid="location-date"]')
-            ?.textContent
-            ?.split(' - ', 2)
+        const dateStr = el
+            .querySelector('p[data-testid="location-date"]')
+            ?.textContent?.split(" - ", 2)
             .at(1);
-        if (!dateStr) logMessage('No date found!');
+        if (!dateStr) logMessage("No date found!");
         // const dateAdded = dateStr ? this.parseDate(dateStr) : null;
 
-        const pathname = el.getElementsByTagName('a')[0]?.getAttribute('href');
-        if (!pathname) logMessage('Pathname is undefined!');
-        const url = `https://${queryUrl.hostname}/${pathname || ''}`;
+        const pathname = el.getElementsByTagName("a")[0]?.getAttribute("href");
+        if (!pathname) logMessage("Pathname is undefined!");
+        const url = `https://${queryUrl.hostname}/${pathname || ""}`;
 
         return new OLXOffer(title, price, null, url);
     }
