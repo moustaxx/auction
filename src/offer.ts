@@ -1,33 +1,31 @@
-export interface OfferProps {
+import { sendNotification } from "./notification";
+import { store } from "./store";
+import { logMessage } from "./utils";
+
+export interface Offer {
     title: string;
     price: number;
     dateAdded: Date | null;
     url: string;
 }
 
-export abstract class Offer implements OfferProps {
-    title: string;
-    price: number;
-    dateAdded: Date | null;
-    url: string;
+function isOfferNew(offerId: string, offer: Offer) {
+    const offerFromStore = store.get(offerId);
+    return !offerFromStore || offerFromStore.price !== offer.price;
+}
 
-    static fromElement(queryUrl: URL, el: Element): Offer {
-        throw new Error("Using Offer.fromElement method directly!");
-    }
+export async function handleParsedOffer(offer: Offer, offerId: string) {
+    if (!isOfferNew(offerId, offer)) return;
 
-    toString() {
-        return (
-            `\n| Title:  ${this.title}` +
-            `\n| Price:  ${this.price} zł` +
-            `\n| URL:    ${this.url}` +
-            "\n-------------"
-        );
-    }
+    // biome-ignore format: more readable
+    logMessage(
+        `\n| Title:  ${offer.title}` +
+        `\n| Price:  ${offer.price} zł` +
+        `\n| URL:    ${offer.url}` +
+        "\n-------------"
+    );
+    sendNotification(offer);
 
-    constructor(title: string, price: number, dateAdded: Date | null, url: string) {
-        this.title = title;
-        this.price = price;
-        this.dateAdded = dateAdded;
-        this.url = url;
-    }
+    store.set(offerId, offer);
+    await store.saveToFile();
 }

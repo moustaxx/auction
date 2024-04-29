@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 
 import config from "../config.js";
-import type { Offer, OfferProps } from "./offer.js";
+import type { Offer } from "./offer.js";
 
 class OfferStore extends Map<string, Offer> {
     async saveToFile() {
@@ -15,7 +15,7 @@ class OfferStore extends Map<string, Offer> {
         const str = await readFile(config.dbPath, { encoding: "utf8" });
         if (!str) return;
 
-        const data: Array<[string, OfferProps]> = JSON.parse(str);
+        const data: Array<[string, Offer]> = JSON.parse(str);
 
         this.clear();
         for (const item of data) this.set(...item);
