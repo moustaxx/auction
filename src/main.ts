@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 import notifier from "node-notifier";
 import open from "open";
-import type { Browser, Page } from "puppeteer";
+import { type Browser, type Page, TimeoutError } from "puppeteer";
 import puppeteer from "puppeteer-extra";
 import PortalPlugin from "puppeteer-extra-plugin-portal";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
@@ -11,7 +11,7 @@ import { AllegroOffer } from "./allegro-offer.js";
 import type { Offer } from "./offer.js";
 import { OLXOffer } from "./olx-offer.js";
 import { store } from "./store.js";
-import { cleanUpLogsAndScreenshots, getFileNameTimestamp, logMessage, sleep } from "./utils.js";
+import { cleanUpLogsAndScreenshots, getFileNameTimestamp, logError, logMessage, sleep } from "./utils.js";
 
 puppeteer.use(StealthPlugin());
 puppeteer.use(
@@ -63,22 +63,17 @@ function sendNotification(offer: Offer) {
     );
 }
 
-async function saveOffer(id: number, offer: Offer) {
+async function saveOffer(id: string, offer: Offer) {
     store.set(id, offer);
     await store.saveToFile();
 }
 
-function isOfferNew(offerId: number, offer: Offer) {
+function isOfferNew(offerId: string, offer: Offer) {
     const offerFromStore = store.get(offerId);
     return !offerFromStore || offerFromStore.price !== offer.price;
 }
 
-function parseOfferId(offerIdString: string) {
-    if (!offerIdString) throw new Error("Offer must have a distinctive id!");
-    return Number.parseInt(offerIdString);
-}
-
-async function handleParsedOffer(offer: Offer, offerId: number) {
+async function handleParsedOffer(offer: Offer, offerId: string) {
     if (!isOfferNew(offerId, offer)) return;
 
     logMessage(offer.toString());
@@ -112,37 +107,32 @@ async function handleCaptcha(page: Page, offerListSelector: string) {
     await page.closePortal();
 }
 
-async function resolveUrl(queryUrl: URL) {
-    if (queryUrl.hostname === "www.olx.pl") {
+async function olxResolver(queryUrl: URL) {
+    try {
         const { window } = await getPageDOM(queryUrl.toString());
         const offerElementArr = window.document.querySelectorAll('div[data-cy="l-card"]');
         if (offerElementArr.length === 0) logMessage("No offers found!");
 
         for (const offerElement of offerElementArr) {
-            const offerId = parseOfferId(offerElement.id);
             const offer = OLXOffer.fromElement(queryUrl, offerElement);
-            await handleParsedOffer(offer, offerId);
+            await handleParsedOffer(offer, offerElement.id);
         }
-    } else if (queryUrl.hostname === "allegro.pl") {
-        if (!browser) throw new Error("config.useBrowser must be true to resolve allegro.pl");
-        const page = await browser.newPage();
-        await page.setUserAgent(config.userAgent);
+    } catch (error) {
+        logError(error);
+    }
+}
+
+async function allegroResolver(queryUrl: URL, triesLeft = 3) {
+    const offerListSelector = ".opbox-listing";
+    if (!browser) throw new Error("config.useBrowser must be true to resolve allegro.pl");
+    const page = await browser.newPage();
+    await page.setUserAgent(config.userAgent);
+
+    try {
         await page.goto(queryUrl.toString());
 
-        const offerListSelector = ".opbox-listing";
-        await page.waitForSelector(offerListSelector, { timeout: 10_000 }).catch(async (error: Error) => {
-            logMessage(error.message);
-            const pageTitle = await page.$("title").then(async x => x?.evaluate(el => el.textContent));
-
-            if (pageTitle === "allegro.pl") await handleCaptcha(page, offerListSelector);
-            else {
-                const path = `logs/error-ss-${getFileNameTimestamp()}.jpg`;
-                await page.screenshot({ path, type: "jpeg" });
-                throw error;
-            }
-        });
+        await page.waitForSelector(offerListSelector, { timeout: 10_000 });
         const offersHtml = await page.$eval(offerListSelector, el => el.innerHTML);
-        await page.close();
 
         const { window } = new JSDOM(offersHtml);
         const offerElementArr = window.document.querySelectorAll("article");
@@ -151,11 +141,37 @@ async function resolveUrl(queryUrl: URL) {
         for (const offerElement of offerElementArr) {
             if (offerElement.textContent?.includes("Sponsorowane")) continue;
 
-            const offerId = parseOfferId(offerElement.dataset.analyticsViewValue || "");
             const offer = AllegroOffer.fromElement(queryUrl, offerElement);
-            await handleParsedOffer(offer, offerId);
+            await handleParsedOffer(offer, offer.url);
         }
-    } else throw new Error(`Unhandled URL hostname: ${queryUrl.hostname}!`);
+    } catch (error) {
+        const err = error as Error;
+
+        if (err.name === TimeoutError.name) {
+            const pageTitle = await page.$("title").then(async x => x?.evaluate(el => el.textContent));
+            if (pageTitle === "allegro.pl") await handleCaptcha(page, offerListSelector);
+            else logMessage(`Selector ${offerListSelector} not found!`);
+        } else if (err.message.startsWith("net::ERR_NETWORK_ACCESS_DENIED")) {
+            logMessage("Network error!");
+            if (triesLeft > 0) {
+                await sleep(15000);
+                logMessage("Retrying...");
+                return allegroResolver(queryUrl, triesLeft - 1);
+            }
+        } else {
+            logError(error);
+            await page
+                .screenshot({ path: `logs/error-ss-${getFileNameTimestamp()}.jpg`, type: "jpeg" })
+                .catch(() => logMessage("Cannot make screenshot!"));
+        }
+    }
+    await page?.close();
+}
+
+async function resolveUrl(queryUrl: URL) {
+    if (queryUrl.hostname === "www.olx.pl") await olxResolver(queryUrl);
+    else if (queryUrl.hostname === "allegro.pl") await allegroResolver(queryUrl);
+    else throw new Error(`Unhandled URL hostname: ${queryUrl.hostname}!`);
 }
 
 async function checkUrl(queryUrlString: string) {
