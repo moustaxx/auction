@@ -49,7 +49,10 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
             const pageTitle = await page.$("title").then(async x => x?.evaluate(el => el.textContent));
             if (pageTitle === "allegro.pl") await handleCaptcha(page, offerListSelector);
             else logMessage(`Selector ${offerListSelector} not found!`);
-        } else if (err.message.startsWith("net::ERR_NETWORK_ACCESS_DENIED")) {
+        } else if (
+            err.message.startsWith("net::ERR_NETWORK_ACCESS_DENIED") ||
+            err.message.startsWith("net::ERR_INTERNET_DISCONNECTED")
+        ) {
             logMessage("Network error!");
             if (triesLeft > 0) {
                 await sleep(15000);
@@ -59,7 +62,11 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
         } else {
             logError(error);
             await page
-                .screenshot({ path: `logs/error-ss-${getFileNameTimestamp()}.jpg`, type: "jpeg" })
+                .screenshot({
+                    path: `logs/error-ss-${getFileNameTimestamp()}.jpg`,
+                    type: "jpeg",
+                    fullPage: true
+                })
                 .catch(() => logMessage("Cannot make screenshot!"));
         }
     }
