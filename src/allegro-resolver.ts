@@ -47,8 +47,11 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
 
         if (err.name === TimeoutError.name) {
             const pageTitle = await page.$("title").then(async x => x?.evaluate(el => el.textContent));
-            if (pageTitle === "allegro.pl") await handleCaptcha(page, offerListSelector);
-            else logMessage(`Selector ${offerListSelector} not found!`);
+            if (pageTitle === "allegro.pl") {
+                await handleCaptcha(page);
+                return allegroResolver(queryUrl, browser, triesLeft - 1);
+            }
+            logMessage(`Selector ${offerListSelector} not found!`);
         } else if (
             err.message.startsWith("net::ERR_NETWORK_ACCESS_DENIED") ||
             err.message.startsWith("net::ERR_INTERNET_DISCONNECTED")
@@ -57,6 +60,7 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
             if (triesLeft > 0) {
                 await sleep(15000);
                 logMessage("Retrying...");
+                await page.close();
                 return allegroResolver(queryUrl, browser, triesLeft - 1);
             }
         } else {
