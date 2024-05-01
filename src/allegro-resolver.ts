@@ -1,7 +1,6 @@
 import { JSDOM } from "jsdom";
-import { type Browser, TimeoutError } from "puppeteer";
+import { type Page, TimeoutError } from "puppeteer";
 
-import config from "../config.js";
 import { handleCaptcha } from "./captcha";
 import { type Offer, handleParsedOffer } from "./offer";
 import { getFileNameTimestamp, logError, logMessage, sleep } from "./utils";
@@ -20,12 +19,8 @@ function fromElement(el: Element) {
     return { title, price, dateAdded: null, url } as Offer;
 }
 
-export async function allegroResolver(queryUrl: URL, browser: Browser | null, triesLeft = 3) {
+export async function allegroResolver(queryUrl: URL, page: Page, triesLeft = 3) {
     const offerListSelector = ".opbox-listing";
-    if (!browser) throw new Error("config.useBrowser must be true to resolve allegro.pl");
-    const page = await browser.newPage();
-    await page.setUserAgent(config.userAgent);
-
     try {
         await page.goto(queryUrl.toString());
 
@@ -49,7 +44,7 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
             const pageTitle = await page.$("title").then(async x => x?.evaluate(el => el.textContent));
             if (pageTitle === "allegro.pl") {
                 await handleCaptcha(page);
-                return allegroResolver(queryUrl, browser, triesLeft - 1);
+                return allegroResolver(queryUrl, page, triesLeft - 1);
             }
             logMessage(`Selector ${offerListSelector} not found!`);
         } else if (
@@ -60,8 +55,7 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
             if (triesLeft > 0) {
                 await sleep(15000);
                 logMessage("Retrying...");
-                await page.close();
-                return allegroResolver(queryUrl, browser, triesLeft - 1);
+                return allegroResolver(queryUrl, page, triesLeft - 1);
             }
         } else {
             logError(error);
@@ -74,5 +68,4 @@ export async function allegroResolver(queryUrl: URL, browser: Browser | null, tr
                 .catch(() => logMessage("Cannot make screenshot!"));
         }
     }
-    await page?.close();
 }

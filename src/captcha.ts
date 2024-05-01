@@ -35,5 +35,4 @@ export async function handleCaptcha(page: Page) {
 
     logMessage("Captcha solved successfully.");
     await page.closePortal();
-    await page.close();
 }

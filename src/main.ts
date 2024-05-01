@@ -1,4 +1,4 @@
-import type { Browser } from "puppeteer";
+import { Page, type Browser } from "puppeteer";
 import puppeteer from "puppeteer-extra";
 import PortalPlugin from "puppeteer-extra-plugin-portal";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
@@ -24,8 +24,13 @@ async function checkUrl(queryUrlString: string, browser: Browser | null) {
     logMessage(`Checking: ${queryUrl.pathname}`);
 
     if (queryUrl.hostname === "www.olx.pl") await olxResolver(queryUrl);
-    else if (queryUrl.hostname === "allegro.pl") await allegroResolver(queryUrl, browser);
-    else throw new Error(`Unhandled URL hostname: ${queryUrl.hostname}!`);
+    else if (queryUrl.hostname === "allegro.pl") {
+        if (!browser) throw new Error("config.useBrowser must be true to resolve allegro.pl");
+        const page = await browser.newPage();
+        await page.setUserAgent(config.userAgent);
+        await allegroResolver(queryUrl, page);
+        await page.close();
+    } else throw new Error(`Unhandled URL hostname: ${queryUrl.hostname}!`);
 }
 
 async function listen() {
